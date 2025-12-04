@@ -1,19 +1,18 @@
-import { StatusBar } from 'expo-status-bar'; // Expo Router often handles StatusBar, but including it is safe
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // --- CRITICAL CONFIGURATION ---
-// 1. Check your IPv4 address using 'ipconfig' in CMD.
-// 2. REPLACE THIS PLACEHOLDER with your actual IPv4 Address (e.g., '192.168.1.5')
-// If you are running on a simulator/emulator, you can use 'localhost' or '10.0.2.2' (Android emulator special address)
+// REPLACE THIS PLACEHOLDER with your actual IPv4 Address (e.g., '10.0.0.78')
 const API_BASE_URL = 'http://10.0.0.78:3000'; 
 // ------------------------------
 
-// Exporting the main function component as 'default' is what Expo Router expects
-export default function App() { 
+export default function App() {
   const [workouts, setWorkouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const router = useRouter(); 
 
   // Function to fetch all workouts from the API
   const fetchWorkouts = useCallback(async () => {
@@ -23,7 +22,6 @@ export default function App() {
       const response = await fetch(`${API_BASE_URL}/api/workouts`);
       
       if (!response.ok) {
-        // Log the response text if the server returned an error status
         const errorText = await response.text();
         throw new Error(`Server returned status ${response.status}: ${errorText}`);
       }
@@ -38,48 +36,13 @@ export default function App() {
     }
   }, []);
 
-  // Function to save a new test workout
-  const saveTestWorkout = async () => {
-    const testWorkout = {
-      // Note: userId '123' is hardcoded here and in the server.js for now.
-      type: 'Strength',
-      durationMinutes: Math.floor(Math.random() * 60) + 30, // 30-90 min
-      notes: `Test strength session: ${new Date().toLocaleTimeString()}`,
-      exercises: [
-        { name: 'Squats', sets: 4, reps: 10, weight: 135 },
-        { name: 'Bench Press', sets: 3, reps: 8, weight: 185 },
-      ]
-    };
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/workouts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testWorkout),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save workout. Server response: ${errorText}`);
-      }
-
-      // If successful, re-fetch the list to update the display
-      console.log("Workout saved successfully!");
-      Alert.alert("Success", "Test workout saved!");
+  // Use useFocusEffect to refresh data every time this screen becomes active
+  useFocusEffect(
+    useCallback(() => {
       fetchWorkouts();
-
-    } catch (err) {
-      console.error("Save Error:", err.message);
-      Alert.alert("Error", `Save Error: ${err.message}`); 
-    }
-  };
-
-  // Fetch data immediately when the component mounts
-  useEffect(() => {
-    fetchWorkouts();
-  }, [fetchWorkouts]);
+      return () => {};
+    }, [fetchWorkouts])
+  );
 
   const renderContent = () => {
     if (loading) {
@@ -102,7 +65,7 @@ export default function App() {
     if (workouts.length === 0) {
       return (
         <View style={styles.messageContainer}>
-          <Text style={styles.messageText}>No workouts found. Click 'Log Test Workout' to add one!</Text>
+          <Text style={styles.messageText}>No workouts found. Click 'Log Workout' to add one!</Text>
         </View>
       );
     }
@@ -136,8 +99,9 @@ export default function App() {
     <View style={styles.container}>
       <Text style={styles.header}>Fitness Tracker</Text>
       <View style={styles.buttonWrapper}>
-        <TouchableOpacity style={styles.button} onPress={saveTestWorkout}>
-            <Text style={styles.buttonText}>Log Test Workout</Text>
+        {/* Navigation now uses the absolute path /log to break out of the (tabs) group */}
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/log')}>
+            <Text style={styles.buttonText}>Log New Workout</Text>
         </TouchableOpacity>
       </View>
 
